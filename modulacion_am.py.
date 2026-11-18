@@ -1,0 +1,104 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.fft import fft, fftfreq
+
+# ==========================================
+# 1. DEFINICIÓN DE LA SEÑAL DE ENTRADA
+# ==========================================
+fs = 10000  # Frecuencia de muestreo (Hz)
+t = np.linspace(0, 0.1, int(fs * 0.1), endpoint=False)  # Vector de tiempo (0.1 segundos)
+
+# Parámetros de la señal mensaje (baja frecuencia) y portadora (alta frecuencia)
+fm = 50     # Frecuencia del mensaje: 50 Hz
+fc = 1000   # Frecuencia de la portadora: 1000 Hz
+Am = 1.0    # Amplitud del mensaje
+Ac = 1.0    # Amplitud de la portadora
+ka = 0.8    # Índice de modulación (0 < ka <= 1 para evitar distorsión por sobremodulación)
+
+# Señal de información (mensaje) y señal portadora
+mensaje = Am * np.cos(2 * np.pi * fm * t)
+portadora = Ac * np.cos(2 * np.pi * fc * t)
+
+# ==========================================
+# 2. IMPLEMENTACIÓN DE LA MODULACIÓN (AM)
+# ==========================================
+# Fórmula estándar AM: s(t) = Ac * [1 + ka * m(t)] * cos(2 * pi * fc * t)
+senal_am = Ac * (1 + ka * mensaje) * np.cos(2 * np.pi * fc * t)
+
+# Cálculo del espectro de frecuencia (FFT)
+N = len(t)
+yf = fft(senal_am)
+xf = fftfreq(N, 1 / fs)
+
+# Nos quedamos solo con las frecuencias positivas
+idx_pos = xf >= 0
+xf_pos = xf[idx_pos]
+magnitud_fft = (2.0 / N) * np.abs(yf[idx_pos])
+
+# ==========================================
+# 3. ANÁLISIS DE RUIDO, DISTORSIÓN Y ATENUACIÓN
+# ==========================================
+# Escenario A: Ruido Blanco Gaussiano (AWGN)
+ruido = np.random.normal(0, 0.35, size=t.shape)
+senal_con_ruido = senal_am + ruido
+
+# Escenario B: Atenuación (pérdida de potencia en el canal, ej. 70% de pérdida)
+factor_atenuacion = 0.3
+senal_atenuada = senal_am * factor_atenuacion
+
+# Escenario C: Distorsión por sobremodulación (ka > 1, inversión de fase)
+ka_distorsion = 1.6
+senal_distorsionada = Ac * (1 + ka_distorsion * mensaje) * np.cos(2 * np.pi * fc * t)
+
+# ==========================================
+# 4. VISUALIZACIÓN DE LA SEÑAL MODULADA
+# ==========================================
+fig, axs = plt.subplots(3, 2, figsize=(14, 10))
+fig.suptitle('Análisis de Sistema de Modulación en Amplitud (AM)', fontsize=14, fontweight='bold')
+
+# Gráfica 1: Señal mensaje (Dominio del tiempo)
+axs[0, 0].plot(t[:500], mensaje[:500], color='blue')
+axs[0, 0].set_title('1. Señal Mensaje (Baja Frecuencia - 50 Hz)')
+axs[0, 0].set_xlabel('Tiempo [s]')
+axs[0, 0].set_ylabel('Amplitud')
+axs[0, 0].grid(True)
+
+# Gráfica 2: Señal Modulada AM (Dominio del tiempo)
+axs[0, 1].plot(t[:500], senal_am[:500], color='green')
+axs[0, 1].set_title('2. Señal Modulada AM (Dominio del Tiempo)')
+axs[0, 1].set_xlabel('Tiempo [s]')
+axs[0, 1].set_ylabel('Amplitud')
+axs[0, 1].grid(True)
+
+# Gráfica 3: Espectro de Frecuencia (FFT)
+axs[1, 0].plot(xf_pos, magnitud_fft, color='purple')
+axs[1, 0].set_xlim(700, 1300)  # Zoom alrededor de la portadora (1000 Hz)
+axs[1, 0].set_title('3. Espectro de Frecuencia (Portadora y Bandas Laterales)')
+axs[1, 0].set_xlabel('Frecuencia [Hz]')
+axs[1, 0].set_ylabel('Magnitud')
+axs[1, 0].grid(True)
+
+# Gráfica 4: Escenario con Ruido
+axs[1, 1].plot(t[:500], senal_con_ruido[:500], color='orange')
+axs[1, 1].set_title('4. Señal AM con Ruido Gaussiano (AWGN)')
+axs[1, 1].set_xlabel('Tiempo [s]')
+axs[1, 1].set_ylabel('Amplitud')
+axs[1, 1].grid(True)
+
+# Gráfica 5: Escenario con Atenuación
+axs[2, 0].plot(t[:500], senal_atenuada[:500], color='teal')
+axs[2, 0].set_ylim(-2, 2)  # Misma escala para notar la pérdida de amplitud
+axs[2, 0].set_title('5. Señal AM Atenuada (Factor 0.3)')
+axs[2, 0].set_xlabel('Tiempo [s]')
+axs[2, 0].set_ylabel('Amplitud')
+axs[2, 0].grid(True)
+
+# Gráfica 6: Escenario con Distorsión (Sobremodulación)
+axs[2, 1].plot(t[:500], senal_distorsionada[:500], color='red')
+axs[2, 1].set_title('6. Señal AM Distorsionada (Sobremodulación ka = 1.6)')
+axs[2, 1].set_xlabel('Tiempo [s]')
+axs[2, 1].set_ylabel('Amplitud')
+axs[2, 1].grid(True)
+
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.show()
